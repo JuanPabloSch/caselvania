@@ -11,7 +11,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // El mundo mide 12000x600
         this.physics.world.setBounds(0, 0, 12000, 600);
 
         this.bg1 = this.add.tileSprite(0, 0, 800, 600, 'fondo1').setOrigin(0).setScrollFactor(0);
@@ -24,31 +23,54 @@ export default class GameScene extends Phaser.Scene {
             repeat: -1     
         });
 
-        // Instanciamos al jugador (lo ponemos arriba para que caiga al piso)
+        // --- GRUPO DE BALAS ---
+        // --- REDISEÑO DE LA BALA (PLATEADA) ---
+        const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Color base: Gris claro/plateado (0xcccccc)
+        graphics.fillStyle(0xcccccc, 1);
+        graphics.fillRect(0, 0, 12, 6);
+
+        // Opcional: Una pequeña línea plateada oscura abajo para darle relieve metálico
+        graphics.fillStyle(0x888888, 1);
+        graphics.fillRect(0, 5, 12, 1); // Línea de sombra de 1 píxel de alto
+
+        graphics.generateTexture('bullet_texture', 12, 6);
+        // --------------------------------------
+
+        // Creamos el grupo físico para las balas
+        this.bullets = this.physics.add.group({
+            allowGravity: false // Las balas de Castlevania no suelen caer por gravedad
+        });
+        // ----------------------
+
         this.player = new Player(this, 100, 200);
 
-        // --- PISO INVISIBLE ---
-        // Ponemos el piso abajo de todo (en Y = 540, porque 600 - 60 de alto = 540)
-        // El tamaño es de 12000 de largo por 60 de alto
         this.floor = this.add.zone(0, 540, 12000, 60).setOrigin(0);
-        
-        // Le añadimos físicas estáticas (para que no se caiga por la gravedad)
         this.physics.add.existing(this.floor, true); 
-
-        // Hacemos que Benedict colisione con el piso invisible
         this.physics.add.collider(this.player, this.floor);
-        // ----------------------
 
         this.cameras.main.setBounds(0, 0, 12000, 600);
         this.cameras.main.startFollow(this.player);
 
         this.cursors = this.input.keyboard.createCursorKeys();
+        
+        // MAPEADO DE LA BARRA ESPACIADORA
+        this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     }
 
     update() {
-        this.player.update(this.cursors);
+        // Le pasamos también la barra espaciadora al update del jugador
+        this.player.update(this.cursors, this.spaceKey);
 
         this.bg1.tilePositionX = this.cameras.main.scrollX * 0.2;
         this.bg2.tilePositionX = this.cameras.main.scrollX * 0.5;
+
+        // Limpieza: Destruir las balas que se salen de la pantalla para no saturar la memoria
+        this.bullets.getChildren().forEach(bullet => {
+            if (bullet.x > this.cameras.main.scrollX + 800 || bullet.x < this.cameras.main.scrollX) {
+                bullet.destroy();
+            }
+        });
     }
 }

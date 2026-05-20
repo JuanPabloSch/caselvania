@@ -1,61 +1,70 @@
 export default class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
-        // Inicializamos con el spritesheet cargado y el frame 0 por defecto
         super(scene, x, y, 'benedict_walk', 0);
         
         scene.add.existing(this);
         scene.physics.add.existing(this);
         
         this.setCollideWorldBounds(true);
-        this.body.setGravityY(1000); // Un poco más de gravedad para que se sienta pesado como Castlevania
-        
-        // Opcional: Si notas que el personaje flota un poco o su hitbox es enorme, 
-        // puedes achicar su caja de colisión aquí con:
-        // this.body.setSize(60, 134); 
+        this.body.setGravityY(1000); 
     }
 
-    update(cursors) {
-    // 1. Verificar si está en el suelo o en el aire
-    const onFloor = this.body.blocked.down;
+    update(cursors, spaceKey) {
+        const onFloor = this.body.blocked.down;
 
-    // 2. Control de movimiento horizontal
-    if (cursors.left.isDown) {
-        this.setVelocityX(-180);
-        this.setFlipX(true);
-        
-        // Solo reproduce la animación de caminar si está en el piso
-        if (onFloor) {
-            this.anims.play('walk', true);
+        // 1. DISPARO (Funciona en el piso y en el aire)
+        if (Phaser.Input.Keyboard.JustDown(spaceKey)) {
+            this.shoot();
         }
-    } 
-    else if (cursors.right.isDown) {
-        this.setVelocityX(180);
-        this.setFlipX(false);
-        
-        if (onFloor) {
-            this.anims.play('walk', true);
+
+        // 2. Control de movimiento horizontal
+        if (cursors.left.isDown) {
+            this.setVelocityX(-180);
+            this.setFlipX(true);
+            if (onFloor) this.anims.play('walk', true);
+        } 
+        else if (cursors.right.isDown) {
+            this.setVelocityX(180);
+            this.setFlipX(false);
+            if (onFloor) this.anims.play('walk', true);
+        } 
+        else {
+            this.setVelocityX(0);
+            if (onFloor) {
+                this.anims.stop();
+                this.setFrame(0); 
+            }
         }
-    } 
-    else {
-        this.setVelocityX(0);
-        if (onFloor) {
-            this.anims.stop();
-            this.setFrame(0); // Pose quieto en el suelo
+
+        // 3. Control del aire
+        if (!onFloor) {
+            this.anims.stop(); 
+            this.setFrame(2); 
+        }
+
+        // 4. Salto
+        if (cursors.up.isDown && onFloor) {
+            this.setVelocityY(-550);
         }
     }
 
-    // 3. Control del aire (Salto / Caída)
-    if (!onFloor) {
-        this.anims.stop(); // Frenamos la animación de caminar para que no mueva las piernas
-        
-        // Congelamos a Benedict en el frame 2 (o el que prefieras del 0 al 4) 
-        // para que mantenga una pose fija de salto mientras esté en el aire.
-        this.setFrame(2); 
-    }
+    shoot() {
+    // Calculamos la dirección basándonos en si el sprite está volteado (flipX)
+    const direction = this.flipX ? -1 : 1;
+    
+    // POSICIÓN EN X: 
+    // Usamos 70 píxeles desde el centro (la mitad de 150 son 75, menos 5 píxeles = 70)
+    // Al multiplicarlo por 'direction', sumará 70 si mira a la derecha o restará 70 si mira a la izquierda.
+    const bulletX = this.x + (direction * 70);
+    
+    // Posición en Y (se mantiene igual, a 45px desde arriba)
+    const bulletY = (this.y - (this.displayHeight / 2)) + 45; 
 
-    // 4. Lógica de activar el salto
-    if (cursors.up.isDown && onFloor) {
-        this.setVelocityY(-550);
-    }
+    // Creamos la bala
+    const bullet = this.scene.bullets.create(bulletX, bulletY, 'bullet_texture');
+    
+    // Velocidad de la bala
+    const bulletSpeed = 500;
+    bullet.setVelocityX(bulletSpeed * direction);
 }
 }
