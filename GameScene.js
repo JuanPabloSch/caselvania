@@ -1,4 +1,5 @@
 import Player from './Player.js';
+import Enemy from './Enemy.js';
 
 export default class GameScene extends Phaser.Scene {
     preload() {
@@ -23,50 +24,96 @@ export default class GameScene extends Phaser.Scene {
             repeat: -1     
         });
 
-        // --- GRUPO DE BALAS ---
-        // --- REDISEÑO DE LA BALA (PLATEADA) ---
+        // Balas
         const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-
-        // Color base: Gris claro/plateado (0xcccccc)
         graphics.fillStyle(0xcccccc, 1);
         graphics.fillRect(0, 0, 12, 6);
-
-        // Opcional: Una pequeña línea plateada oscura abajo para darle relieve metálico
         graphics.fillStyle(0x888888, 1);
-        graphics.fillRect(0, 5, 12, 1); // Línea de sombra de 1 píxel de alto
-
+        graphics.fillRect(0, 5, 12, 1);
         graphics.generateTexture('bullet_texture', 12, 6);
-        // --------------------------------------
-
-        // Creamos el grupo físico para las balas
-        this.bullets = this.physics.add.group({
-            allowGravity: false // Las balas de Castlevania no suelen caer por gravedad
-        });
-        // ----------------------
+        this.bullets = this.physics.add.group({ allowGravity: false });
 
         this.player = new Player(this, 100, 200);
 
+        // Piso
         this.floor = this.add.zone(0, 540, 12000, 60).setOrigin(0);
         this.physics.add.existing(this.floor, true); 
         this.physics.add.collider(this.player, this.floor);
+
+        // Enemigos
+        this.enemies = this.physics.add.group();
+        this.enemies.add(new Enemy(this, 600, 400, 150));
+        this.enemies.add(new Enemy(this, 1200, 400, 200));
+        this.enemies.add(new Enemy(this, 2500, 400, 300));
+
+        this.physics.add.collider(this.enemies, this.floor);
+
+        // --- COLISIONES Y DAÑO ---
+        // Balas matan enemigos
+        this.physics.add.overlap(this.bullets, this.enemies, (bullet, enemy) => {
+            bullet.destroy();
+            enemy.destroy();
+        });
+
+        // Enemigos dañan al jugador
+        this.physics.add.overlap(this.player, this.enemies, (player, enemy) => {
+            player.takeDamage(enemy); // ← Le pasamos el "enemy" acá adentro
+        });
+        
+        // -------------------------
+
+        // --- DISEÑO DE LA BARRA DE VIDA (ESTILO CASTLEVANIA) ---
+        // Creamos un contenedor estático para la interfaz
+        this.healthBars = [];
+        this.createHealthBarUI();
+        // --------------------------------------------------------
 
         this.cameras.main.setBounds(0, 0, 12000, 600);
         this.cameras.main.startFollow(this.player);
 
         this.cursors = this.input.keyboard.createCursorKeys();
-        
-        // MAPEADO DE LA BARRA ESPACIADORA
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     }
 
+    createHealthBarUI() {
+        // Dibujamos 5 rectangulitos pegados uno al lado del otro
+        // Cada bloque mide 10 píxeles de ancho y 24 de alto, separados por 4 píxeles.
+        for (let i = 0; i < 5; i++) {
+            let xPos = 20 + (i * 14); // 20px de margen izquierdo + espaciado
+            let yPos = 20;            // 20px de margen superior
+
+            // Rectángulo de fondo gris oscuro (la vida vacía)
+            let bgBar = this.add.rectangle(xPos, yPos, 10, 24, 0x444444).setOrigin(0).setScrollFactor(0);
+            
+            // Rectángulo de vida activa (rojo clásico)
+            let activeBar = this.add.rectangle(xPos, yPos, 10, 24, 0xff0000).setOrigin(0).setScrollFactor(0);
+            
+            // Guardamos la barra activa en un array para poder ocultarla cuando reciba daño
+            this.healthBars.push(activeBar);
+        }
+    }
+
+    updateHealthBar() {
+        // Recorremos las barras visuales y apagamos las que superen la vida actual de Benedict
+        for (let i = 0; i < this.healthBars.length; i++) {
+            if (i >= this.player.health) {
+                this.healthBars[i].setVisible(false); // Apaga el rectangulito rojo
+            } else {
+                this.healthBars[i].setVisible(true);
+            }
+        }
+    }
+
     update() {
-        // Le pasamos también la barra espaciadora al update del jugador
         this.player.update(this.cursors, this.spaceKey);
+
+        this.enemies.getChildren().forEach(enemy => {
+            enemy.update();
+        });
 
         this.bg1.tilePositionX = this.cameras.main.scrollX * 0.2;
         this.bg2.tilePositionX = this.cameras.main.scrollX * 0.5;
 
-        // Limpieza: Destruir las balas que se salen de la pantalla para no saturar la memoria
         this.bullets.getChildren().forEach(bullet => {
             if (bullet.x > this.cameras.main.scrollX + 800 || bullet.x < this.cameras.main.scrollX) {
                 bullet.destroy();
