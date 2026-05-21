@@ -9,6 +9,11 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 150, 
             frameHeight: 134 
         });
+
+        this.load.spritesheet('sebihead', 'sebihead.png', {
+        frameWidth: 80,
+        frameHeight: 80
+        });
     }
 
     create() {
@@ -24,7 +29,7 @@ export default class GameScene extends Phaser.Scene {
             repeat: -1     
         });
 
-        // Balas
+        // Balas de plata de Benedict
         const graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xcccccc, 1);
         graphics.fillRect(0, 0, 12, 6);
@@ -33,6 +38,14 @@ export default class GameScene extends Phaser.Scene {
         graphics.generateTexture('bullet_texture', 12, 6);
         this.bullets = this.physics.add.group({ allowGravity: false });
 
+        // --- NUEVO: TEXTURA Y GRUPO PARA LAS BALAS ENEMIGAS (VIOLETAS) ---
+        const eGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        eGraphics.fillStyle(0x9b59b6, 1); 
+        eGraphics.fillRect(0, 0, 10, 10);  
+        eGraphics.generateTexture('enemy_bullet_texture', 10, 10);
+        this.enemyBullets = this.physics.add.group({ allowGravity: false });
+        // -----------------------------------------------------------------
+
         this.player = new Player(this, 100, 200);
 
         // Piso
@@ -40,33 +53,34 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(this.floor, true); 
         this.physics.add.collider(this.player, this.floor);
 
-        // Enemigos
-        this.enemies = this.physics.add.group();
-        this.enemies.add(new Enemy(this, 600, 400, 150));
-        this.enemies.add(new Enemy(this, 1200, 400, 200));
-        this.enemies.add(new Enemy(this, 2500, 400, 300));
+        // --- ENEMIGOS (Los cambiamos para que floten más arriba, Y = 250) ---
+        this.enemies = this.physics.add.group({ allowGravity: false }); 
 
-        this.physics.add.collider(this.enemies, this.floor);
+        // Bajamos la Y a 420 para que estén al alcance de un salto
+        this.enemies.add(new Enemy(this, 700, 420, 300)); 
+        this.enemies.add(new Enemy(this, 1500, 420, 300));
+        this.enemies.add(new Enemy(this, 2800, 420, 300));
+        // ---------------------------------------------------------------------
 
         // --- COLISIONES Y DAÑO ---
-        // Balas matan enemigos
         this.physics.add.overlap(this.bullets, this.enemies, (bullet, enemy) => {
             bullet.destroy();
             enemy.destroy();
         });
 
-        // Enemigos dañan al jugador
         this.physics.add.overlap(this.player, this.enemies, (player, enemy) => {
-            player.takeDamage(enemy); // ← Le pasamos el "enemy" acá adentro
+            player.takeDamage(enemy); 
+        });
+
+        // NUEVO: Las balas enemigas dañan a Benedict
+        this.physics.add.overlap(this.player, this.enemyBullets, (player, bullet) => {
+            bullet.destroy(); 
+            player.takeDamage(bullet); 
         });
         
-        // -------------------------
-
-        // --- DISEÑO DE LA BARRA DE VIDA (ESTILO CASTLEVANIA) ---
-        // Creamos un contenedor estático para la interfaz
+        // --- INTERFAZ DE VIDA ---
         this.healthBars = [];
         this.createHealthBarUI();
-        // --------------------------------------------------------
 
         this.cameras.main.setBounds(0, 0, 12000, 600);
         this.cameras.main.startFollow(this.player);
@@ -76,28 +90,20 @@ export default class GameScene extends Phaser.Scene {
     }
 
     createHealthBarUI() {
-        // Dibujamos 5 rectangulitos pegados uno al lado del otro
-        // Cada bloque mide 10 píxeles de ancho y 24 de alto, separados por 4 píxeles.
         for (let i = 0; i < 5; i++) {
-            let xPos = 20 + (i * 14); // 20px de margen izquierdo + espaciado
-            let yPos = 20;            // 20px de margen superior
+            let xPos = 20 + (i * 14); 
+            let yPos = 20;            
 
-            // Rectángulo de fondo gris oscuro (la vida vacía)
             let bgBar = this.add.rectangle(xPos, yPos, 10, 24, 0x444444).setOrigin(0).setScrollFactor(0);
-            
-            // Rectángulo de vida activa (rojo clásico)
             let activeBar = this.add.rectangle(xPos, yPos, 10, 24, 0xff0000).setOrigin(0).setScrollFactor(0);
-            
-            // Guardamos la barra activa en un array para poder ocultarla cuando reciba daño
             this.healthBars.push(activeBar);
         }
     }
 
     updateHealthBar() {
-        // Recorremos las barras visuales y apagamos las que superen la vida actual de Benedict
         for (let i = 0; i < this.healthBars.length; i++) {
             if (i >= this.player.health) {
-                this.healthBars[i].setVisible(false); // Apaga el rectangulito rojo
+                this.healthBars[i].setVisible(false); 
             } else {
                 this.healthBars[i].setVisible(true);
             }
@@ -107,14 +113,22 @@ export default class GameScene extends Phaser.Scene {
     update() {
         this.player.update(this.cursors, this.spaceKey);
 
+        // Actualizamos pasándole el jugador como parámetro
         this.enemies.getChildren().forEach(enemy => {
-            enemy.update();
+            enemy.update(this.player);
         });
 
         this.bg1.tilePositionX = this.cameras.main.scrollX * 0.2;
         this.bg2.tilePositionX = this.cameras.main.scrollX * 0.5;
 
         this.bullets.getChildren().forEach(bullet => {
+            if (bullet.x > this.cameras.main.scrollX + 800 || bullet.x < this.cameras.main.scrollX) {
+                bullet.destroy();
+            }
+        });
+
+        // NUEVO: Limpieza de balas enemigas
+        this.enemyBullets.getChildren().forEach(bullet => {
             if (bullet.x > this.cameras.main.scrollX + 800 || bullet.x < this.cameras.main.scrollX) {
                 bullet.destroy();
             }
