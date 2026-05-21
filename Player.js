@@ -127,34 +127,39 @@ update(cursors, spaceKey) {
         }
     }
 
-    takeDamage() {
-        if (this.isDead || this.isKnockback) return;
+takeDamage() {
+    // 1. PRIMERO: Si ya está muerto o es invulnerable, cortamos acá
+    if (this.isDead || this.isInvulnerable) return;
 
-        // --- EL FIX PARA LA OPCIÓN B ---
-        if (this.isDucking) {
-            // 1. Le restás vida acá si tenés esa lógica (ej: this.health -= 1;)
-            
-            // 2. Hacés que parpadee para que el jugador sepa que le pegaron
-            this.setAlpha(0.5);
-            this.scene.time.delayedCall(200, () => { this.setAlpha(1); });
-
-            // 3. CORTAMOS ACÁ: No tocamos velocidades, no activamos knockback,
-            // el jugador retiene el control absoluto de Benedict.
-            return; 
-        }
-
-        // --- KNOCKBACK NORMAL (Solo si estaba parado o saltando) ---
-        this.isKnockback = true;
-        
-        // Animación de daño/salto por el impacto
-        this.setVelocityX(this.flipX ? 150 : -150); 
-        this.setVelocityY(-200); 
-        
-        // Volvemos a la normalidad después de 400 milisegundos
-        this.scene.time.delayedCall(400, () => {
-            this.isKnockback = false;
-        });
+    // 2. SEGUNDO: Restamos la vida REAL
+    this.health -= 1; 
+    console.log("Salud actual:", this.health);
+    
+    // 3. TERCERO: Actualizamos la UI inmediatamente
+    if (this.scene.updateHealthBar) {
+        this.scene.updateHealthBar();
     }
+
+    // 4. CUARTO: Verificamos muerte
+    if (this.health <= 0) {
+        this.die();
+    } else {
+        // 5. QUINTO: Lógica de invulnerabilidad
+        this.isInvulnerable = true;
+        this.setAlpha(0.5);
+        this.scene.time.delayedCall(1000, () => {
+            this.setAlpha(1);
+            this.isInvulnerable = false;
+        });
+
+        // 6. SEXTO: Knockback (Solo si NO está agachado)
+        if (!this.isDucking) {
+            this.isKnockback = true;
+            this.setVelocity(this.flipX ? 200 : -200, -300);
+            this.scene.time.delayedCall(400, () => { this.isKnockback = false; });
+        }
+    }
+}
 
     die() {
         this.isDead = true;
