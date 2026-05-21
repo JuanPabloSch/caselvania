@@ -19,6 +19,7 @@ export default class Skeleton extends Phaser.Physics.Arcade.Sprite {
         this.setOffset(0, 0);
         this.setCollideWorldBounds(true);
         this.body.setAllowGravity(true);
+        this.body.setImmovable(false);
         
         // Patrulla
         this.startX = x;
@@ -32,6 +33,10 @@ export default class Skeleton extends Phaser.Physics.Arcade.Sprite {
 
     update(player) {
         if (!this.active || player.isDead) return;
+
+        if (Math.abs(this.body.velocity.x) < 10) {
+        this.body.setVelocityX(this.patrolSpeed);
+        }
 
         // Movimiento de patrulla
         if (this.x >= this.startX + this.patrolRange) {
@@ -64,7 +69,7 @@ export default class Skeleton extends Phaser.Physics.Arcade.Sprite {
         }
 
         const bone = this.scene.enemyBones.create(this.x + (direction * 30), this.y - 30, 'temp_bone');
-        bone.body.setGravityY(1000);
+        bone.body.setGravityY(600);
         bone.setVelocity(200 * direction, -450);
         bone.setAngularVelocity(300 * direction);
     }
