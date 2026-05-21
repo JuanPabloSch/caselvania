@@ -127,39 +127,32 @@ update(cursors, spaceKey) {
         }
     }
 
-    takeDamage(attacker) {
-        if (this.isDead || this.isInvincible) return;
+    takeDamage() {
+        if (this.isDead || this.isKnockback) return;
 
-        this.health -= 1;
-        this.scene.updateHealthBar();
+        // --- EL FIX PARA LA OPCIÓN B ---
+        if (this.isDucking) {
+            // 1. Le restás vida acá si tenés esa lógica (ej: this.health -= 1;)
+            
+            // 2. Hacés que parpadee para que el jugador sepa que le pegaron
+            this.setAlpha(0.5);
+            this.scene.time.delayedCall(200, () => { this.setAlpha(1); });
 
-        if (this.health <= 0) {
-            this.die();
-            return;
+            // 3. CORTAMOS ACÁ: No tocamos velocidades, no activamos knockback,
+            // el jugador retiene el control absoluto de Benedict.
+            return; 
         }
 
+        // --- KNOCKBACK NORMAL (Solo si estaba parado o saltando) ---
         this.isKnockback = true;
-        const knockDirection = attacker.x > this.x ? -1 : 1;
-        this.setVelocityX(200 * knockDirection); 
-        this.setVelocityY(-300);                
-
-        this.scene.time.delayedCall(350, () => {
-            if (!this.isDead) {
-                this.isKnockback = false;
-            }
-        });
-
-        this.isInvincible = true;
-        this.scene.tweens.add({
-            targets: this,
-            alpha: 0.3,
-            yoyo: true,
-            duration: 100,
-            repeat: 4,
-            onComplete: () => {
-                this.alpha = 1;
-                this.isInvincible = false;
-            }
+        
+        // Animación de daño/salto por el impacto
+        this.setVelocityX(this.flipX ? 150 : -150); 
+        this.setVelocityY(-200); 
+        
+        // Volvemos a la normalidad después de 400 milisegundos
+        this.scene.time.delayedCall(400, () => {
+            this.isKnockback = false;
         });
     }
 
