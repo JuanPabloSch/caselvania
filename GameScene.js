@@ -14,6 +14,7 @@ export default class GameScene extends Phaser.Scene {
         frameWidth: 80,
         frameHeight: 80
         });
+        this.load.image('benedict_dead', 'benedict_dead.png');
     }
 
     create() {

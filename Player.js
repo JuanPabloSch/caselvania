@@ -113,16 +113,40 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     die() {
-        this.isDead = true;
-        this.isKnockback = false;
-        this.setVelocity(0, 0);
-        this.setAcceleration(0, 0);
-        this.anims.stop();
-        this.setFrame(0);
-        this.setAngle(-90); 
-        this.body.setEnable(false); 
-        console.log("GAME OVER");
-    }
+    this.isDead = true;
+    this.isKnockback = false;
+    
+    // 1. APAGAMOS LAS FÍSICAS DE GOLPE
+    // Así el motor no interfiere con la posición 'Y' que vos elijas
+    this.setVelocity(0, 0);
+    this.body.setAllowGravity(false);
+    this.body.setEnable(false); 
+    
+    this.anims.stop();
+    this.setTexture('benedict_dead'); 
+    this.setAngle(0);                
+
+    // 2. SIMULAMOS LA CAÍDA DE FORMA VISUAL (Súper precisa)
+    this.scene.time.addEvent({
+        delay: 16, // Corre a ~60 frames por segundo
+        callback: () => {
+            // AJUSTE MANUAL: Poné acá el número del piso que quieras (ejemplo: 510)
+            const alturaPisoDeseada = 530; 
+
+            if (this.y < alturaPisoDeseada) {
+                this.y += 8; // Velocidad de caída visual (podés cambiar el 8 por otro número si querés que caiga más lento o rápido)
+                
+                // Si en el próximo frame se pasa del piso, lo clavamos justo en el límite
+                if (this.y > alturaPisoDeseada) {
+                    this.y = alturaPisoDeseada;
+                }
+            }
+        },
+        repeat: 60 // Se ejecuta durante 1 segundo aprox, suficiente para que llegue al piso
+    });
+    
+    console.log("GAME OVER");
+}
 
     shoot() {
         if (this.isDead || this.isKnockback) return; 
