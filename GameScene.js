@@ -72,6 +72,7 @@ export default class GameScene extends Phaser.Scene {
         this.enemies.add(new Enemy(this, 700, 420, 300)); 
         this.enemies.add(new Enemy(this, 1500, 420, 300));
         this.enemies.add(new Enemy(this, 2800, 420, 300));
+        
         // ---------------------------------------------------------------------
         this.physics.world.createDebugGraphic();
         // --- COLISIONES Y DAÑO ---
@@ -90,27 +91,33 @@ export default class GameScene extends Phaser.Scene {
             player.takeDamage(bullet); 
         });
 
-        // En tu create():
-            this.skeletons = this.physics.add.group({ 
-                allowGravity: true, 
-                immovable: false 
-            });
+        // --- ESQUELETOS (Todo en un solo lugar) ---
+        this.skeletons = this.physics.add.group({ 
+            allowGravity: true, 
+            immovable: false 
+        });
 
-            // Para crear un esqueleto:
-            // En GameScene.js, donde creas el esqueleto:
-            // Donde creas el esqueleto, añádele esto:
-            const skel = new Skeleton(this, 800, 400); // Empieza un poco más arriba
+        const posEsqueletos = [1000, 2000, 3500]; 
+
+        posEsqueletos.forEach(xPos => {
+            const skel = new Skeleton(this, xPos, 400); // Empezamos arriba para que caigan
             this.skeletons.add(skel);
-
-            // FUERZA la física del cuerpo
+            
+            // Configuramos su física individualmente
             skel.body.setAllowGravity(true);
             skel.body.setCollideWorldBounds(true);
-            skel.body.setVelocityY(100); // Un pequeño empujón hacia abajo para que toque el suelo al nacer   // "Resetea" la posición para evitar que se quede pegado al suelo al nacer
-
-            this.physics.add.overlap(this.bullets, this.skeletons, (bullet, skeleton) => {
-            bullet.destroy(); // La bala desaparece
-            skeleton.destroy(); // El esqueleto muere
+            skel.body.setVelocityY(100); 
         });
+
+        // Colisión contra el suelo (una sola vez)
+        this.physics.add.collider(this.skeletons, this.floor);
+
+        // Overlap para disparos (una sola vez)
+        this.physics.add.overlap(this.bullets, this.skeletons, (bullet, skeleton) => {
+            bullet.destroy();
+            skeleton.destroy();
+        });
+// ------------------------------------------
 
             // Colisión contra el suelo (AQUÍ ESTÁ LA CLAVE: el suelo físico)
             this.physics.add.collider(this.skeletons, this.floor);
